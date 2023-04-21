@@ -1,0 +1,54 @@
+import os
+import json
+import eyed3
+import logging
+from tqdm import tqdm
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+eyed3_logger = logging.getLogger("eyed3")
+eyed3_logger.setLevel(logging.ERROR)
+
+def find_mp3_files(folder_path):
+    mp3_files = []
+    for root, _, files in os.walk(folder_path):
+        for file in files:
+            if file.endswith(".mp3"):
+                mp3_files.append(os.path.join(root, file))
+    return mp3_files
+
+def extract_artist_names(mp3_files):
+    artist_names = set()
+    for mp3_file in tqdm(mp3_files, desc="Processing MP3 files", unit="file"):
+        try:
+            audio_file = eyed3.load(mp3_file)
+            if audio_file.tag:
+                artist = audio_file.tag.artist
+                if artist:
+                    artist_names.add(artist)
+            else:
+                logger.warning(f"Skipping file '{mp3_file}' due to missing or improperly formatted metadata")
+        except Exception as e:
+            logger.error(f"Error processing file '{mp3_file}': {e}")
+    return list(artist_names)
+
+def save_artist_names_to_json(artist_names, output_file):
+    with open(output_file, "w") as f:
+        json.dump(artist_names, f, indent=4)
+
+def main():
+    folder_path = "d:\my music"
+    output_file = "artist_names.json"
+
+    mp3_files = find_mp3_files(folder_path)
+    logger.info(f"Found {len(mp3_files)} MP3 files in the folder '{folder_path}'")
+
+    artist_names = extract_artist_names(mp3_files)
+    logger.info(f"Found {len(artist_names)} unique artist names")
+
+    save_artist_names_to_json(artist_names, output_file)
+    logger.info(f"Saved artist names to '{output_file}'")
+
+if __name__ == "__main__":
+    main()
